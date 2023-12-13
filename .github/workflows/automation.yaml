@@ -1,0 +1,21 @@
+name: Automation
+
+on:
+  pull_request:
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull-request-event-pull_request
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  required_linear_ticket:
+    name: Required Linear Ticket
+    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.user.login != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull Request Linear Ticket Check Action
+        uses: FatbearLabs/ticket-check-action@qua-12008-update-githublinear-integration-to-match-multiple-teams
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          titleRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
+          branchRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
+          bodyRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
+          titleFormat: '[%id%] %title%'
