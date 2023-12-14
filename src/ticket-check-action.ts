@@ -3,7 +3,7 @@ import { context, getOctokit } from '@actions/github';
 
 // Helper function to retrieve ticket number from a string (either a shorthand reference or a full URL)
 const extractId = (value: string): string | null => {
-  const result = value.match(/([A-Za-z]{3}-)?\d+/);
+  const result = value.match(/([A-Za-z]{3,4}-)?\d+/);
 
   if (result !== null) {
     return result[0];
