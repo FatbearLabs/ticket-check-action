@@ -3,7 +3,7 @@ import { context, getOctokit } from '@actions/github';
 
 // Helper function to retrieve ticket number from a string (either a shorthand reference or a full URL)
 const extractId = (value: string): string | null => {
-  const result = value.match(/\d+/);
+  const result = value.match(/([A-Za-z]{3}-)?\d+/);
 
   if (result !== null) {
     return result[0];
@@ -34,6 +34,10 @@ export async function run(): Promise<void> {
     const titleRegex = new RegExp(titleRegexBase, titleRegexFlags);
     const titleCheck = titleRegex.exec(title);
 
+    // get the title format and ticket prefix
+    const ticketPrefix = getInput('ticketPrefix');
+    const titleFormat = getInput('titleFormat', { required: true });
+
     // Instantiate a GitHub Client instance
     const token = getInput('token', { required: true });
     const client = getOctokit(token);
@@ -43,6 +47,49 @@ export async function run(): Promise<void> {
     const sender: string = senderType === 'Bot' ? login.replace('[bot]', '') : login;
 
     const quiet = getInput('quiet', { required: false }) === 'true';
+
+    // Function to update the PR title
+    const updateTitle = async (id: string | null, source: string, ticketPrefix?: string): Promise<void> => {
+      const upperCaseId = id ? id.toUpperCase() : null;
+      let updatedTitle = title;
+
+      // Check if the title already contains the ID (case-insensitive)
+      if (upperCaseId) {
+        const idRegex = new RegExp(`\\b${upperCaseId}\\b`, 'i');
+        
+        if (idRegex.test(title)) {
+          // If ID exists in any case, replace it with uppercase version
+          updatedTitle = title.replace(idRegex, upperCaseId);
+        } else {
+          // If ID does not exist in the title, add it according to titleFormat
+          updatedTitle = titleFormat.replace('%id%', upperCaseId).replace('%title%', title);
+        }
+      } else {
+        // If no ID is provided, use the original title
+        updatedTitle = title;
+      }
+
+      // Handle ticket prefix if provided
+      if (titleFormat.includes('%prefix%')) {
+        updatedTitle = ticketPrefix ? updatedTitle.replace('%prefix%', ticketPrefix) : updatedTitle.replace('%prefix%', '');
+      }
+
+      // Trim and clean up extra spaces
+      updatedTitle = updatedTitle.trim().replace(/\s+/g, ' ');
+
+      // Update the PR title if it has changed
+      if (updatedTitle !== title) {
+        await client.rest.pulls.update({
+          owner,
+          repo,
+          pull_number: number,
+          title: updatedTitle,
+        });
+        debug('success', `Title updated for ${source}`);
+      } else {
+        debug('info', `No update needed for the title from ${source}`);
+      }
+    };
 
     // Exempt Users
     const exemptUsers = getInput('exemptUsers', { required: false })
@@ -99,10 +146,6 @@ export async function run(): Promise<void> {
       });
     };
 
-    // get the title format and ticket prefix
-    const ticketPrefix = getInput('ticketPrefix');
-    const titleFormat = getInput('titleFormat', { required: true });
-
     // Check for a ticket reference in the branch
     const branch: string = context.payload.pull_request?.head.ref;
     const branchRegexBase = getInput('branchRegex', { required: true });
@@ -115,39 +158,7 @@ export async function run(): Promise<void> {
     if (branchCheck !== null) {
       debug('success', 'Branch name contains a reference to a ticket, updating title');
 
-      const id = extractId(branch);
-
-      if (id === null) {
-        setFailed('Could not extract a ticket ID reference from the branch');
-
-        return;
-      }
-
-      let newTitle = '';
-
-      if (titleFormat.includes('%id%') && id && !title.includes(id)) {
-        newTitle = titleFormat.replace('%id%', id);
-      } else {
-        newTitle = titleFormat.replace('%id%', '');
-      }
-
-      if (titleFormat.includes('%prefix%') && ticketPrefix && !title.includes(ticketPrefix)) {
-        newTitle = newTitle.replace('%prefix%', ticketPrefix);
-      } else {
-        newTitle = newTitle.replace('%prefix%', '');
-      }
-
-      if (title.includes(ticketPrefix) && title.includes(id)) {
-        // if both have already been updated just leave it alone
-        newTitle = title;
-      }
-
-      client.rest.pulls.update({
-        owner,
-        repo,
-        pull_number: number,
-        title: newTitle.replace('%title%', title),
-      });
+      await updateTitle(extractId(branch), 'branch', ticketPrefix);
 
       if (!quiet) {
         client.rest.pulls.createReview({
@@ -198,39 +209,7 @@ export async function run(): Promise<void> {
     if (bodyCheck !== null) {
       debug('success', 'Body contains a reference to a ticket, updating title');
 
-      const id = extractId(bodyCheck[0]);
-
-      if (id === null) {
-        setFailed('Could not extract a ticket shorthand reference from the body');
-
-        return;
-      }
-
-      let newTitle = '';
-
-      if (titleFormat.includes('%id%') && id && !title.includes(id)) {
-        newTitle = titleFormat.replace('%id%', id);
-      } else {
-        newTitle = titleFormat.replace('%id%', '');
-      }
-
-      if (titleFormat.includes('%prefix%') && ticketPrefix && !title.includes(ticketPrefix)) {
-        newTitle = newTitle.replace('%prefix%', ticketPrefix);
-      } else {
-        newTitle = newTitle.replace('%prefix%', '');
-      }
-
-      if (title.includes(ticketPrefix) && title.includes(id)) {
-        // if both have already been updated just leave it alone
-        newTitle = title;
-      }
-
-      client.rest.pulls.update({
-        owner,
-        repo,
-        pull_number: number,
-        title: newTitle.replace('%title%', title),
-      });
+      await updateTitle(extractId(bodyCheck[0]), 'body', ticketPrefix);
 
       if (!quiet) {
         client.rest.pulls.createReview({
@@ -276,39 +255,7 @@ export async function run(): Promise<void> {
     if (bodyURLCheck !== null) {
       debug('success', 'Body contains a ticket URL, updating title');
 
-      const id = extractId(bodyURLCheck[0]);
-
-      if (id === null) {
-        setFailed('Could not extract a ticket URL from the body');
-
-        return;
-      }
-
-      let newTitle = '';
-
-      if (titleFormat.includes('%id%') && id && !title.includes(id)) {
-        newTitle = titleFormat.replace('%id%', id);
-      } else {
-        newTitle = titleFormat.replace('%id%', '');
-      }
-
-      if (titleFormat.includes('%prefix%') && ticketPrefix && !title.includes(ticketPrefix)) {
-        newTitle = newTitle.replace('%prefix%', ticketPrefix);
-      } else {
-        newTitle = newTitle.replace('%prefix%', '');
-      }
-
-      if (title.includes(ticketPrefix) && title.includes(id)) {
-        // if both have already been updated just leave it alone
-        newTitle = title;
-      }
-
-      client.rest.pulls.update({
-        owner,
-        repo,
-        pull_number: number,
-        title: newTitle.replace('%title%', title),
-      });
+      await updateTitle(extractId(bodyURLCheck[0]), 'body url', ticketPrefix);
 
       if (!quiet) {
         client.rest.pulls.createReview({
