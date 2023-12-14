@@ -3,7 +3,7 @@ import { context, getOctokit } from '@actions/github';
 
 // Helper function to retrieve ticket number from a string (either a shorthand reference or a full URL)
 const extractId = (value: string): string | null => {
-  const result = value.match(/([A-Za-z]{3}-)?\d+/);
+  const result = value.match(/([A-Za-z]{3,4}-)?\d+/);
 
   if (result !== null) {
     return result[0];
@@ -52,7 +52,7 @@ export async function run(): Promise<void> {
     const updateTitle = async (id: string | null, source: string, ticketPrefix?: string): Promise<void> => {
       const upperCaseId = id ? id.toUpperCase() : null;
       let updatedTitle = title;
-
+      debug('info', `Checking title ${title} for ID ${upperCaseId}`);
       // Check if the title already contains the ID (case-insensitive)
       if (upperCaseId) {
         const idRegex = new RegExp(`\\b${upperCaseId}\\b`, 'i');
