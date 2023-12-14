@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Pull Request Linear Ticket Check Action
-        uses: FatbearLabs/ticket-check-action@qua-12008-update-githublinear-integration-to-match-multiple-teams
+        uses: FatbearLabs/ticket-check-action@qua-12073-update-github-automation-to-support-4-letter-team-id
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           titleRegex: '(?<ticketNumber>[A-Za-z]{3,4}-\d+)'
