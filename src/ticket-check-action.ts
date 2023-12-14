@@ -52,7 +52,7 @@ export async function run(): Promise<void> {
     const updateTitle = async (id: string | null, source: string, ticketPrefix?: string): Promise<void> => {
       const upperCaseId = id ? id.toUpperCase() : null;
       let updatedTitle = title;
-
+      debug('info', `Checking title ${title} for ID ${upperCaseId}`);
       // Check if the title already contains the ID (case-insensitive)
       if (upperCaseId) {
         const idRegex = new RegExp(`\\b${upperCaseId}\\b`, 'i');
