@@ -15,7 +15,7 @@ jobs:
         uses: FatbearLabs/ticket-check-action@qua-12008-update-githublinear-integration-to-match-multiple-teams
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          titleRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
-          branchRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
-          bodyRegex: '(?<ticketNumber>[A-Za-z]{3}-\d+)'
+          titleRegex: '(?<ticketNumber>[A-Za-z]{3,4}-\d+)'
+          branchRegex: '(?<ticketNumber>[A-Za-z]{3,4}-\d+)'
+          bodyRegex: '(?<ticketNumber>[A-Za-z]{3,4}-\d+)'
           titleFormat: '[%id%] %title%'
