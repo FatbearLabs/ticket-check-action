@@ -158,7 +158,7 @@ export async function run(): Promise<void> {
     if (branchCheck !== null) {
       debug('success', 'Branch name contains a reference to a ticket, updating title');
 
-      await updateTitle(extractId(branch), 'branch', ticketPrefix);
+      await updateTitle(branchCheck.groups?.ticketNumber ?? null, 'branch', ticketPrefix);
 
       if (!quiet) {
         client.rest.pulls.createReview({
